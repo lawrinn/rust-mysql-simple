@@ -3016,6 +3016,7 @@ mod test {
                     get_opts()
                         .user(Some("parsec_test_user"))
                         .pass(Some(pass))
+                        .db_name(None::<String>)
                         .init(vec![] as Vec<String>),
                 )
                 .unwrap();
