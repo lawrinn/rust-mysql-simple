@@ -63,6 +63,7 @@ rust_decimal = ["mysql_common/rust_decimal"]
 frunk = ["mysql_common/frunk"]
 binlog = ["mysql_common/binlog"]
 client_ed25519 = ["mysql_common/client_ed25519"]
+client_parsec = ["mysql_common/client_parsec"]
 
 [dev-dependencies]
 mysql_common = { version = "0.36.2", features = ["time", "frunk"] }
@@ -97,3 +98,6 @@ named_pipe = "~0.4"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[patch.crates-io]
+mysql_common = { git = "https://github.com/lawrinn/rust_mysql_common", branch = "master" }
