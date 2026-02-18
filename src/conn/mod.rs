@@ -995,38 +995,35 @@ impl Conn {
     fn continue_parsec_auth(&mut self, auth_switched: bool) -> Result<()> {
         let packet = self.read_packet()?;
         // Noramally we need to skip escaping 0x01 byte. But in first parsec implementations, server did not send it.
-        let mut payload = &packet[1..];
-        if packet[0] != 0x01 {
-            payload = &packet;
+        let mut payload = &packet[0..];
+        if packet.len() > 0 && packet[0] == 0x01 {
+            payload = &packet[1..];
         }
         // At this point in future, when it will be possible for parsec to be default authentication method,
         // we can have authentication switch request. The other possibele option here(and for now the only option) -
         // ext-salt packet.
-        match payload[0] {
-            0xfe if !auth_switched => {
-                let auth_switch_request = ParseBuf(&payload).parse(())?;
-                self.perform_auth_switch(auth_switch_request)
-            }
-            _ => {
-                // Letting parser function decide if all is fine with the packet
-                self.0
-                    .auth_plugin
-                    .read_add_data(&payload)
-                    .ok_or_else(|| DriverError(crate::DriverError::InvalidParsecSalt))?;
-                // Now generating response.
-                let plugin_data = self
-                    .0
-                    .auth_plugin
-                    .gen_data(self.0.opts.get_pass(), &self.0.nonce)
-                    .unwrap();
+        if payload.len() > 0 && payload[0] == 0xfe && !auth_switched {
+            let auth_switch_request = ParseBuf(&payload).parse(())?;
+            self.perform_auth_switch(auth_switch_request)
+        } else {
+            // Letting parser function decide if all is fine with the packet
+            self.0
+                .auth_plugin
+                .read_add_data(&payload)
+                .ok_or_else(|| DriverError(crate::DriverError::InvalidParsecSalt))?;
+            // Now generating response.
+            let plugin_data = self
+                .0
+                .auth_plugin
+                .gen_data(self.0.opts.get_pass(), &self.0.nonce)
+                .unwrap();
 
-                self.write_struct(&plugin_data.into_owned())?;
-                // After client response, server will send either ok or error.
-                let payload = self.read_packet()?;
-                match payload[0] {
-                    0x00 => self.handle_ok::<CommonOkPacket>(&payload).map(drop),
-                    _ => Err(DriverError(UnexpectedPacket)),
-                }
+            self.write_struct(&plugin_data.into_owned())?;
+            // After client response, server will send either ok or error.
+            let payload = self.read_packet()?;
+            match payload[0] {
+                0x00 => self.handle_ok::<CommonOkPacket>(&payload).map(drop),
+                _ => Err(DriverError(UnexpectedPacket)),
             }
         }
     }
